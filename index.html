@@ -808,6 +808,106 @@
     return MOBILE_FEE + IRS_RATE * roundtripMiles;
   }
 
+  /* ---- Live mileage lookup (via Apps Script backend) ----
+     The static tables above only ever covered a limited set of nearby ZIPs.
+     When a backend is configured, we instead ask it for the real driving
+     distance for ANY ZIP -- computed from Jeremy's actual business address,
+     which lives only on the server and is never sent to or exposed in the
+     browser. The static tables stay in place as (a) the only source of
+     mileage when no backend is configured (the claude.ai preview build),
+     and (b) an instant approximate placeholder shown while the accurate
+     number is still loading. */
+
+  var mileageCache = {}; // cacheKey -> {status:'pending'|'ok'|'error', roundtripMiles?, miles?}
+  var _jsonpCounter = 0;
+
+  function jsonpRequest(params, onDone){
+    var cbName = '__mileageCb' + (_jsonpCounter++);
+    var script = document.createElement('script');
+    var qs = Object.keys(params).map(function(k){
+      return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+    }).join('&');
+    var done = false;
+    var cleanup = function(){
+      delete window[cbName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+    };
+    var timeout = setTimeout(function(){
+      if(done) return; done = true;
+      cleanup(); onDone(null);
+    }, 8000);
+    window[cbName] = function(data){
+      if(done) return; done = true;
+      clearTimeout(timeout); cleanup(); onDone(data);
+    };
+    script.onerror = function(){
+      if(done) return; done = true;
+      clearTimeout(timeout); cleanup(); onDone(null);
+    };
+    script.src = GAS_ENDPOINT + '?' + qs + '&callback=' + cbName;
+    document.head.appendChild(script);
+  }
+
+  function ensureMileageFetched(cacheKey, params, onResolved){
+    var entry = mileageCache[cacheKey];
+    if(entry && (entry.status === 'pending' || entry.status === 'ok')) return;
+    mileageCache[cacheKey] = { status: 'pending' };
+    jsonpRequest(params, function(data){
+      mileageCache[cacheKey] = onResolved(data);
+      renderQuoteBox();
+    });
+  }
+
+  // Returns {status:'invalid'|'pending'|'ok'|'error', roundtripMiles?}
+  function mileageFromBaseLookup(zip){
+    zip = normalizeZip(zip);
+    if(!/^\d{5}$/.test(zip)) return { status: 'invalid' };
+    var legacyRT = TRAVEL_MILES_FROM_BASE.hasOwnProperty(zip) ? TRAVEL_MILES_FROM_BASE[zip] : null;
+
+    if(!AUTO_SEND_ENABLED){
+      return legacyRT != null ? { status: 'ok', roundtripMiles: legacyRT, approx: true } : { status: 'error' };
+    }
+
+    var cacheKey = 'fromBase:' + zip;
+    var entry = mileageCache[cacheKey];
+    if(!entry){
+      ensureMileageFetched(cacheKey, { action: 'fromBase', zip: zip }, function(data){
+        return (data && typeof data.miles === 'number' && isFinite(data.miles) && data.miles >= 0)
+          ? { status: 'ok', roundtripMiles: Math.round(data.miles * 2) }
+          : { status: 'error' };
+      });
+      entry = mileageCache[cacheKey];
+    }
+    if(entry.status === 'ok') return entry;
+    if(legacyRT != null) return { status: 'ok', roundtripMiles: legacyRT, approx: true };
+    return entry;
+  }
+
+  // Returns {status:'invalid'|'pending'|'ok'|'error', miles?} (one-way)
+  function mileageP2PLookup(zipA, zipB){
+    zipA = normalizeZip(zipA); zipB = normalizeZip(zipB);
+    if(!/^\d{5}$/.test(zipA) || !/^\d{5}$/.test(zipB)) return { status: 'invalid' };
+    var legacyOW = haversineOneWay(zipA, zipB);
+
+    if(!AUTO_SEND_ENABLED){
+      return legacyOW != null ? { status: 'ok', miles: legacyOW, approx: true } : { status: 'error' };
+    }
+
+    var cacheKey = 'p2p:' + zipA + ':' + zipB;
+    var entry = mileageCache[cacheKey];
+    if(!entry){
+      ensureMileageFetched(cacheKey, { action: 'p2p', originZip: zipA, destZip: zipB }, function(data){
+        return (data && typeof data.miles === 'number' && isFinite(data.miles) && data.miles >= 0)
+          ? { status: 'ok', miles: Math.round(data.miles) }
+          : { status: 'error' };
+      });
+      entry = mileageCache[cacheKey];
+    }
+    if(entry.status === 'ok') return entry;
+    if(legacyOW != null) return { status: 'ok', miles: legacyOW, approx: true };
+    return entry;
+  }
+
   function timeSurchargeLines(dateStr, timeChoice, specificTime){
     var lines = [];
     if(dateStr){
@@ -849,11 +949,13 @@
     total += actFee;
 
     var zip = fd('gen_zip');
-    var miles = milesFromBase(zip);
-    if(miles != null){
-      var mf = mileageFee(miles);
-      lines.push({ label: 'Travel (~' + miles + ' mi roundtrip)', amount: mf });
+    var mResult = mileageFromBaseLookup(zip);
+    if(mResult.status === 'ok'){
+      var mf = mileageFee(mResult.roundtripMiles);
+      lines.push({ label: 'Travel (~' + mResult.roundtripMiles + ' mi roundtrip)', amount: mf });
       total += mf;
+    } else if(mResult.status === 'pending'){
+      unresolved.push('Calculating your travel distance…');
     } else if(zip){
       unresolved.push('Travel fee — we’ll confirm your exact mileage when we follow up');
     } else {
@@ -895,11 +997,13 @@
     }
 
     var zip = fd('loan_zip');
-    var miles = milesFromBase(zip);
-    if(miles != null){
-      var mf = mileageFee(miles);
-      lines.push({ label: 'Travel (~' + miles + ' mi roundtrip)', amount: mf });
+    var mResult = mileageFromBaseLookup(zip);
+    if(mResult.status === 'ok'){
+      var mf = mileageFee(mResult.roundtripMiles);
+      lines.push({ label: 'Travel (~' + mResult.roundtripMiles + ' mi roundtrip)', amount: mf });
       total += mf;
+    } else if(mResult.status === 'pending'){
+      unresolved.push('Calculating your travel distance…');
     } else if(zip){
       unresolved.push('Travel fee — we’ll confirm your exact mileage when we follow up');
     } else {
@@ -925,11 +1029,13 @@
     lines.push({ label: name + ' base fee', amount: baseFee });
 
     var zip = fd(prefix + '_zip');
-    var miles = milesFromBase(zip);
-    if(miles != null){
-      var mf = mileageFee(miles);
-      lines.push({ label: 'Travel (~' + miles + ' mi roundtrip)', amount: mf });
+    var mResult = mileageFromBaseLookup(zip);
+    if(mResult.status === 'ok'){
+      var mf = mileageFee(mResult.roundtripMiles);
+      lines.push({ label: 'Travel (~' + mResult.roundtripMiles + ' mi roundtrip)', amount: mf });
       total += mf;
+    } else if(mResult.status === 'pending'){
+      unresolved.push('Calculating your travel distance…');
     } else if(zip){
       unresolved.push('Travel fee — we’ll confirm your exact mileage when we follow up');
     } else {
@@ -945,14 +1051,17 @@
   function quoteCourier(){
     var lines = [], unresolved = [], total = 0;
     var pz = fd('cr_pickup_zip'), dz = fd('cr_dropoff_zip');
-    var miles = haversineOneWay(pz, dz);
-    if(miles != null){
+    var mResult = mileageP2PLookup(pz, dz);
+    if(mResult.status === 'ok'){
+      var miles = mResult.miles;
       var mileageCost = IRS_RATE * miles;
       var driveHours = miles / 60 + 0.25;
       var serviceCharge = 30 * driveHours;
       lines.push({ label: 'Mileage (~' + miles + ' mi × $' + IRS_RATE.toFixed(2) + ')', amount: mileageCost });
       lines.push({ label: 'Drive-time service charge (~' + driveHours.toFixed(2) + ' hrs × $30)', amount: serviceCharge });
       total += mileageCost + serviceCharge;
+    } else if(mResult.status === 'pending'){
+      unresolved.push('Calculating mileage &amp; time…');
     } else {
       unresolved.push('Add both ZIP codes above for a mileage &amp; time estimate');
     }
