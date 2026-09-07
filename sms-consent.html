@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Alert Sign-Up — The Embry Group</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,500&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root{
+    --ink: #1C1917;
+    --ink-soft: #475569;
+    --paper: #FAFAF9;
+    --surface: #FFFFFF;
+    --surface-sunken: #F5F5F4;
+    --seal: #164E63;
+    --seal-strong: #0F3A4A;
+    --seal-tint: #164E631a;
+    --line: #E7E5E4;
+    --line-strong: #D6D3D1;
+    --muted: #78716C;
+    --success: #3F6B4A;
+    --success-tint: #3F6B4A1a;
+    --danger: #9C3B2E;
+    --danger-tint: #9C3B2E14;
+    --shadow: none;
+    --radius: 0px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15.5px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap{
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+  }
+
+  .eyebrow{
+    font-family: "DM Mono", monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--seal);
+    margin: 0 0 10px;
+  }
+
+  h1{
+    font-family: "Lora", serif;
+    font-weight: 600;
+    font-size: 1.9rem;
+    line-height: 1.25;
+    margin: 0 0 14px;
+    color: var(--ink);
+  }
+
+  .lede{
+    color: var(--ink-soft);
+    font-size: 1rem;
+    margin: 0 0 36px;
+    max-width: 54ch;
+  }
+
+  .panel{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 28px;
+  }
+
+  .field-label{
+    font-family: "DM Mono", monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .recipient{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    margin-bottom: 24px;
+  }
+
+  .recipient .who{
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .recipient .num{
+    font-family: "DM Mono", monospace;
+    color: var(--ink-soft);
+    margin-left: auto;
+  }
+
+  .consent-box{
+    border: 1px solid var(--line-strong);
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+
+  .checkbox-row{
+    display:flex;
+    align-items:flex-start;
+    gap:11px;
+    font-size:0.92rem;
+  }
+
+  .checkbox-row input{
+    margin-top:3px;
+    accent-color: var(--seal);
+    width:17px;
+    height:17px;
+    flex:none;
+    cursor: pointer;
+  }
+
+  .checkbox-row span{
+    color: var(--ink);
+  }
+
+  .consent-fine{
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 10px 0 0 28px;
+    line-height: 1.6;
+  }
+
+  .consent-fine a{
+    color: var(--seal-strong);
+  }
+
+  .btn{
+    font-family:"DM Sans", sans-serif; font-weight:600; font-size:0.76rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border-radius: 0; padding: 13px 26px; cursor:pointer; border:1px solid transparent;
+    display:inline-flex; align-items:center; gap:8px; transition: all .15s ease;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-primary{ background: var(--seal); color: #F8FAFC; }
+  .btn-primary:hover:not(:disabled){ background: var(--seal-strong); }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+
+  .confirm{
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--success-tint);
+    border: 1px solid var(--success);
+    color: var(--success);
+    padding: 14px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-top: 18px;
+  }
+
+  .confirm.show{ display: flex; }
+
+  .meta{
+    margin-top: 44px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  .meta p{ margin: 0 0 8px; }
+  .meta a{ color: var(--seal-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">The Embry Group — Account Configuration</p>
+  <h1>Text alert sign-up</h1>
+  <p class="lede">This is where I, as the business owner, opt in to receive automated SMS alerts on my own phone whenever a customer submits a booking request through my website's quote tool.</p>
+
+  <div class="panel">
+    <span class="field-label">Alert recipient</span>
+    <div class="recipient">
+      <span class="who">Jeremy Embry, Owner — The Embry Group</span>
+      <span class="num">(928) 800-1622</span>
+    </div>
+
+    <span class="field-label">Consent</span>
+    <div class="consent-box">
+      <label class="checkbox-row">
+        <input type="checkbox" id="smsConsent">
+        <span>I agree to receive automated SMS text alerts from The Embry Group notifying me of new booking requests submitted through my website. Message frequency varies (approximately one message per booking request). Msg &amp; data rates may apply. Reply STOP to cancel at any time, or HELP for help. Contact: jeremy@theembrygroup.com.</span>
+      </label>
+      <p class="consent-fine">See the full <a href="https://theembrygroup.com/terms" target="_blank" rel="noopener">Terms of Service</a> for how alerts are used. Phone numbers collected here are never sold or shared with third parties for marketing purposes.</p>
+    </div>
+
+    <button class="btn btn-primary" id="enableBtn" disabled>Enable text alerts</button>
+    <div class="confirm" id="confirmMsg">Text alerts are enabled for (928) 800-1622.</div>
+  </div>
+
+  <div class="meta">
+    <p>This page documents the opt-in used to enable SMS alerts for The Embry Group's internal booking-request notification system, registered under A2P 10DLC.</p>
+    <p>Business: The Embry Group &middot; Louisville, KY &middot; <a href="mailto:jeremy@theembrygroup.com">jeremy@theembrygroup.com</a></p>
+  </div>
+</div>
+
+<script>
+  const checkbox = document.getElementById('smsConsent');
+  const btn = document.getElementById('enableBtn');
+  const confirmMsg = document.getElementById('confirmMsg');
+
+  checkbox.addEventListener('change', () => {
+    btn.disabled = !checkbox.checked;
+    confirmMsg.classList.remove('show');
+  });
+
+  btn.addEventListener('click', () => {
+    if (!checkbox.checked) return;
+    confirmMsg.classList.add('show');
+    btn.disabled = true;
+  });
+</script>
+</body>
+</html>
