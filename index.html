@@ -663,9 +663,17 @@
       This opens a pre-filled email in your email app, addressed to Jeremy — just hit send from there to deliver it. It isn't an instant booking; he'll reply with a firm price (factoring in travel, documents, and any add-ons) and confirm your appointment time, usually within a few hours.
     </div>
 
+    <div class="field" id="termsField" style="margin-top:16px;">
+      <label class="checkbox-row">
+        <input type="checkbox" id="agreeTerms" name="agree_terms" required>
+        <span>I have read and accept the <a href="https://theembrygroup.com/terms" target="_blank" rel="noopener">Terms of Service</a>.</span>
+      </label>
+      <div class="error-msg" id="termsError">Please confirm you've read and accept the Terms of Service before sending your request.</div>
+    </div>
+
     <div class="form-actions">
       <button type="button" class="btn btn-ghost" id="backTo2">← Edit details</button>
-      <button type="button" class="btn btn-primary" id="sendRequest">Open email to send →</button>
+      <button type="button" class="btn btn-primary" id="sendRequest" disabled>Open email to send →</button>
     </div>
 
     <details class="fallback">
@@ -1198,9 +1206,17 @@
       return;
     }
     buildReceipt();
+    document.getElementById('agreeTerms').checked = false;
+    document.getElementById('termsField').classList.remove('has-error');
+    document.getElementById('sendRequest').disabled = true;
     goToStep(3);
   });
   document.getElementById('backTo2').addEventListener('click', function(){ goToStep(2); });
+
+  document.getElementById('agreeTerms').addEventListener('change', function(){
+    document.getElementById('sendRequest').disabled = !this.checked;
+    if(this.checked){ document.getElementById('termsField').classList.remove('has-error'); }
+  });
 
   /* ---- Build receipt (step 3) + email body ---- */
   function fd(name){
@@ -1339,6 +1355,11 @@
   }
 
   document.getElementById('sendRequest').addEventListener('click', function(){
+    if(!document.getElementById('agreeTerms').checked){
+      document.getElementById('termsField').classList.add('has-error');
+      document.getElementById('termsField').scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
     var meta = SERVICE_META[state.service];
     var subject = 'New ' + meta.name + ' Request — ' + fd('cust_name') + ' (prefers ' + fd('pref_contact') + ')';
     var body = document.getElementById('copyText').value;
@@ -1391,6 +1412,9 @@
     document.getElementById('pref_time_specific_wrap').style.display = 'none';
     document.getElementById('quoteBox').style.display = 'none';
     document.getElementById('customQuoteNote').style.display = 'none';
+    document.getElementById('agreeTerms').checked = false;
+    document.getElementById('termsField').classList.remove('has-error');
+    document.getElementById('sendRequest').disabled = true;
     goToStep(1);
   });
 })();
